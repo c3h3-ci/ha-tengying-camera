@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+
+# 敏感/私有文件（勿提交）
+bridge/options.json
+*_secrets*.json
+*.b64
+*.data
+*.so
+*.bin
+bridge/mediamtx
+bridge/rootfs_system/
+
+# 编辑器/系统
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

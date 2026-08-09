@@ -1,0 +1,12 @@
+{
+  "domain": "tengying_camera",
+  "name": "影腾智联",
+  "codeowners": ["@C3H3-AI"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/C3H3-AI/ha-tengying-camera",
+  "iot_class": "cloud_polling",
+  "requirements": ["pycryptodome>=3.18.0"],
+  "version": "0.2.1",
+  "icon": "mdi:camera"
+}

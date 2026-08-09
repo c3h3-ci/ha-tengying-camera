@@ -1,0 +1,9 @@
+# mediamtx 配置（tengying_bridge addon）
+rtspAddress: :8560
+paths:
+  all_others:
+    source: publisher
+hls: no
+webrtc: no
+srt: no
+rtmp: no

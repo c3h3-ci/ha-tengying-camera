@@ -1,0 +1,324 @@
+ptz:
+  name: 云台控制
+  description: 控制腾影摄像头云台方向（走 bridge 控制通道）
+  fields:
+    device_id:
+      name: 设备 ID
+      description: 设备 UUID（如 YT3486ZCX35W）
+      required: true
+      example: YT3486ZCX35W
+    direction:
+      name: 方向
+      description: 云台移动方向
+      required: true
+      selector:
+        select:
+          options:
+            - stop
+            - up
+            - down
+            - left
+            - right
+            - left_up
+            - left_down
+            - right_up
+            - right_down
+    speed:
+      name: 速度
+      description: 云台速度 1-255
+      default: 100
+      selector:
+        number:
+          min: 1
+          max: 255
+          step: 1
+    duration:
+      name: 持续时间
+      description: 移动持续毫秒后自动停止（0=不自动停）
+      default: 500
+      selector:
+        number:
+          min: 0
+          max: 10000
+          step: 100
+
+list_records:
+  name: 查询云端录像
+  description: 查询指定设备指定日期的云端录像列表（返回 start_time/end_time/ossid）
+  fields:
+    device_id:
+      name: 设备 ID
+      description: 设备 UUID（如 YT3486ZCX35W）
+      required: true
+      example: YT3486ZCX35W
+    date:
+      name: 日期
+      description: YYYY-MM-DD（默认今天）
+      required: true
+      example: "2026-08-09"
+
+download_record:
+  name: 下载云端录像
+  description: 下载指定时间段云端录像为 H265 裸流（含 G711A 音频），保存到 /config/www/tengying_records/，返回 /local/ 访问链接
+  fields:
+    device_id:
+      name: 设备 ID
+      description: 设备 UUID（如 YT3486ZCX35W）
+      required: true
+      example: YT3486ZCX35W
+    date:
+      name: 日期
+      description: YYYY-MM-DD（默认今天）
+      required: false
+      example: "2026-08-09"
+    start_time:
+      name: 起始时间
+      description: 起始 Unix 秒（默认录像段起点）
+      required: false
+      example: 1786204800
+      selector:
+        number:
+          min: 0
+          max: 4102444800
+          step: 1
+    end_time:
+      name: 结束时间
+      description: 结束 Unix 秒（默认录像段终点）
+      required: false
+      example: 1786218730
+      selector:
+        number:
+          min: 0
+          max: 4102444800
+          step: 1
+
+list_messages:
+  name: 查询告警消息
+  description: 查询指定设备/日期的告警消息列表（移动/人形/车辆/宠物等事件）
+  fields:
+    device_id:
+      name: 设备 ID
+      description: 设备 UUID（如 YT3486ZCX35W）
+      required: true
+      example: YT3486ZCX35W
+    date:
+      name: 日期
+      description: YYYY-MM-DD（默认今天）
+      required: false
+      example: "2026-08-09"
+    tag:
+      name: 事件类型
+      description: 过滤事件类型（motion/body/car/pet/sound/ai_summary）
+      required: false
+      example: motion
+    offset:
+      name: 偏移
+      description: 分页偏移
+      required: false
+      default: 0
+    limit:
+      name: 数量
+      description: 返回条数上限
+      required: false
+      default: 30
+
+list_message_categories:
+  name: 查询消息分类
+  description: 查询告警消息分类（motion/body/car/pet/sound/ai_summary）
+  fields:
+    device_id:
+      name: 设备 ID
+      description: 设备 UUID（如 YT3486ZCX35W）
+      required: true
+      example: YT3486ZCX35W
+
+get_push_switches:
+  name: 查询推送开关
+  description: 查询各事件类型的推送开关配置
+  fields:
+    device_id:
+      name: 设备 ID
+      description: 设备 UUID（如 YT3486ZCX35W）
+      required: true
+      example: YT3486ZCX35W
+
+set_push_switch:
+  name: 设置推送开关
+  description: 开启/关闭某事件类型的推送（motion/body/car/pet/sound/ai_summary）
+  fields:
+    device_id:
+      name: 设备 ID
+      description: 设备 UUID（如 YT3486ZCX35W）
+      required: true
+      example: YT3486ZCX35W
+    tag:
+      name: 事件类型
+      description: motion/body/car/pet/sound/ai_summary
+      required: true
+      example: motion
+    enabled:
+      name: 开启
+      description: true=开启推送，false=关闭
+      required: true
+      default: true
+      selector:
+        boolean: {}
+    global_enabled:
+      name: 全局推送
+      description: 可选：设置全局推送开关
+      required: false
+
+device_command:
+  name: 下发设备指令
+  description: 下发任意 IOCTRL 设备指令（走 bridge 控制通道），如日夜模式/双光源/移动跟踪/设备重启
+  fields:
+    device_id:
+      name: 设备 ID
+      description: 设备 UUID（如 YT3486ZCX35W）
+      required: true
+      example: YT3486ZCX35W
+    io:
+      name: 指令码
+      description: "IOCTRL 指令码：32792=日夜模式 32788=双光源 32802=移动跟踪 32784=设备重启"
+      required: true
+      example: 32792
+      selector:
+        number:
+          min: 0
+          max: 65535
+          step: 1
+    payload:
+      name: 载荷
+      description: "载荷 hex：如日夜模式 12B mode@4（0=AUTO 1=OFF 2=ON）例 000000000200000000000000=ON"
+      required: true
+      example: "000000000200000000000000"
+
+record_play:
+  name: SD 卡录像回放
+  description: 控制设备 SD 卡录像回放（IOCTRL 794）。回放期间视频流切到 SD 卡内容，stop 后自动恢复直播
+  fields:
+    device_id:
+      name: 设备 ID
+      description: 设备 UUID（如 YT3486ZCX35W）
+      required: true
+      example: YT3486ZCX35W
+    command:
+      name: 命令
+      description: start(开始回放)/stop(停止)/pause/continue/end
+      required: false
+      default: start
+      selector:
+        select:
+          options:
+            - start
+            - stop
+            - pause
+            - continue
+            - end
+    start_time:
+      name: 回放起始时间
+      description: Unix 秒（默认当前时间）
+      required: false
+      example: 1786204800
+    duration:
+      name: 回放时长
+      description: 秒（默认 60；0=不自动停止）
+      required: false
+      default: 60
+      selector:
+        number:
+          min: 0
+          max: 3600
+          step: 10
+
+share_code:
+  name: 生成共享码
+  description: 生成设备共享码，可分享给其他腾影智联账号（App 内输入共享码添加设备）
+  fields:
+    device_id:
+      name: 设备 ID
+      description: 设备 UUID（如 YT3486ZCX35W）
+      required: true
+      example: YT3486ZCX35W
+    timeout:
+      name: 有效期
+      description: 共享码有效秒数（默认 600）
+      required: false
+      default: 600
+      selector:
+        number:
+          min: 60
+          max: 86400
+          step: 60
+
+share_list:
+  name: 查询共享列表
+  description: 查询设备的共享用户列表
+  fields:
+    device_id:
+      name: 设备 ID
+      description: 设备 UUID（如 YT3486ZCX35W）
+      required: true
+      example: YT3486ZCX35W
+
+share_cancel:
+  name: 取消共享
+  description: 取消设备的某个共享用户
+  fields:
+    device_id:
+      name: 设备 ID
+      description: 设备 UUID（如 YT3486ZCX35W）
+      required: true
+      example: YT3486ZCX35W
+    share_id:
+      name: 共享 ID
+      description: 共享记录 ID（share_list 返回的 share_id）
+      required: true
+      example: 43976018
+    share_type:
+      name: 共享类型
+      description: 默认 1
+      required: false
+      default: 1
+
+talkback:
+  name: 语音对讲
+  description: 单向喊话：把音频文件通过摄像头扬声器播放（8kHz G711A 上行）。可配合 TTS 生成语音
+  fields:
+    device_id:
+      name: 设备 ID
+      description: 设备 UUID（如 YT3486ZCX35W）
+      required: true
+      example: YT3486ZCX35W
+    file:
+      name: 音频文件
+      description: 音频文件绝对路径（wav/mp3 等，ffmpeg 自动转 8kHz G711A）
+      required: true
+      example: /config/www/tts_test.mp3
+    auto_start:
+      name: 自动启动扬声器
+      description: 发送前先下发 848 扬声器启动指令（默认 true）
+      required: false
+      default: true
+      selector:
+        boolean: {}
+
+audio_down:
+  name: 采集设备麦克风音频
+  description: 双向语音·下行：连接音频下行端口采集 N 秒设备麦克风声音，保存 g711a + 转 wav，返回 /local/ 播放链接
+  fields:
+    device_id:
+      name: 设备 ID
+      description: 设备 UUID（如 YT3486ZCX35W）
+      required: true
+      example: YT3586ZENZ3B
+    duration:
+      name: 采集时长
+      description: 秒（默认 10，最大 120）
+      required: false
+      default: 10
+      selector:
+        number:
+          min: 1
+          max: 120
+          step: 1

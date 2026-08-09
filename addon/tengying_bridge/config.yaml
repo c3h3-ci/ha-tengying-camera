@@ -1,0 +1,26 @@
+name: Tengying Camera Bridge
+version: 0.5.0
+slug: tengying_bridge
+description: 腾影智联摄像头 PPCS 收流桥（bionic chroot + RTSP 出流 + PTZ/双向语音通道）
+url: https://github.com/C3H3-AI/ha-tengying-camera
+arch:
+  - aarch64
+init: false
+host_network: true
+privileged:
+  - SYS_ADMIN
+full_access: true
+startup: application
+boot: auto
+options:
+  username: ""
+  password: ""
+  devices:
+    - ""
+  rtsp_port: 8560
+schema:
+  username: str
+  password: password
+  devices:
+    - str
+  rtsp_port: int

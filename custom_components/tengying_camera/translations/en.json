@@ -1,0 +1,22 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Tengying Smart Camera",
+        "description": "Enter your Tengying account credentials",
+        "data": {
+          "username": "Phone number",
+          "password": "Password",
+          "name": "Name"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Invalid username or password",
+      "cannot_connect": "Cannot connect to server"
+    },
+    "abort": {
+      "already_configured": "This account is already configured"
+    }
+  }
+}
