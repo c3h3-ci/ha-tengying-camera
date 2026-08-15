@@ -1,9 +1,8 @@
 name: Tengying Camera Bridge
-version: 0.5.0
+version: 0.7.1
 slug: tengying_bridge
 description: 腾影智联摄像头 PPCS 收流桥（双镜头 4 路 RTSP + PTZ + 双向语音 + 云端录像）
 url: https://github.com/C3H3-AI/ha-tengying-camera
-image: ghcr.io/c3h3-ai/tengying-bridge:0.5.0
 arch:
   - aarch64
 init: false
@@ -11,6 +10,7 @@ host_network: true
 privileged:
   - SYS_ADMIN
 full_access: true
+apparmor: disable
 startup: application
 boot: auto
 options:

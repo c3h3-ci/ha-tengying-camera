@@ -9,8 +9,10 @@ bridge/options.json
 *_secrets*.json
 *.b64
 *.data
-*.so
 *.bin
+# 注意: tengying_bridge/ (addon 构建目录) 里的 .so / mediamtx / rootfs_system
+#       是 addon 自包含构建必需的，必须提交，切勿忽略！
+bridge/**/*.so
 bridge/mediamtx
 bridge/rootfs_system/
 
