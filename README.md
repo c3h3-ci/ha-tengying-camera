@@ -32,7 +32,33 @@ HA 集成 ──HTTPS 云 API──▶ 腾影云 (登录/告警/录像/共享/OS
 
 ## 安装
 
-### 1. 部署 bridge 容器（HA 服务器）
+本集成由两部分组成：
+
+1. **bridge Add-on**（Supervisor 一键安装）— 跑 PPCS 收流 + RTSP，推荐用此方式部署。
+2. **HA 集成**（HACS）— 提供实体与服务，调用云端 API。
+
+### 方式一：Supervisor Add-on（推荐）
+
+1. **添加 Add-on 仓库**：设置 → 加载项 → 加载项商店 → 右上 ⋮ → 仓库 → 填入
+   `https://github.com/C3H3-AI/ha-tengying-camera` → 添加 → 等待重载。
+2. **安装 Tengying Camera Bridge**：在加载项商店搜「Tengying Camera Bridge」→ 安装。
+3. **配置选项**（安装后「配置」页）：
+
+   | 选项 | 说明 |
+   |---|---|
+   | `username` | 腾影账号 |
+   | `password` | 腾影密码 |
+   | `devices` | 设备 UUID 数组，如 `["YT3586ZENZ3B"]`（顺序决定控制端口映射） |
+   | `rtsp_port` | RTSP 端口，默认 `8560` |
+
+4. **启动**：开启「自动启动」「自动更新」→ 启动。日志见「日志」页，应出现
+   `[main] all device pipelines started`。
+
+> 镜像 `ghcr.io/c3h3-ai/tengying-bridge:0.5.0` 需为 **public**（仓库默认私有，
+> 请到 GitHub Packages 页面手动将包可见性改为 Public，否则 Supervisor 拉取会 403）。
+> 容器需要 `特权模式` + `host 网络`（Add-on 已在 `config.yaml` 声明）。
+
+### 方式二：手动 docker run（高级 / 替代）
 
 ```bash
 docker run -d --name tengying_bridge \
@@ -55,13 +81,13 @@ docker run -d --name tengying_bridge \
 > 设备 UUID 可在 App 设备详情或 `list_records` 服务返回中看到。
 > 容器需要 `--privileged`（chroot 挂载）+ `--network host`（RTSP/控制端口）。
 
-### 2. 安装 HA 集成（HACS 或手动）
+### 安装 HA 集成（HACS 或手动）
 
 **HACS 方式**：添加自定义仓库 `https://github.com/C3H3-AI/ha-tengying-camera`（类别：Integration）→ 安装。
 
 **手动方式**：把 `custom_components/tengying_camera/` 拷到 `/config/custom_components/`，重启 HA。
 
-### 3. 配置
+### 配置
 
 设置 → 设备与服务 → 添加集成 → 搜「影腾智联」→ 填账号密码 + RTSP 地址（`127.0.0.1:8560`）+ 设备顺序。
 

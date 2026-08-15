@@ -171,9 +171,13 @@ async def async_download_record_service(
              "downloaded": 0, "missing": 0}
 
     # 按段下载（每段独立文件，避免跨段 ossid 混用 token）
+    def _to_ms(v: int) -> int:
+        # fetch_cloud_records 返回秒级时间戳；个别设备可能返回毫秒，统一归一化为毫秒
+        return v * 1000 if v < 1_000_000_000_000 else v
+
     for idx, seg in enumerate(segments):
-        seg_start = max(start_s, seg["start_time"]) * 1000
-        seg_end = min(end_s, seg["end_time"]) * 1000
+        seg_start = _to_ms(max(start_s, seg["start_time"]))
+        seg_end = _to_ms(min(end_s, seg["end_time"]))
         if seg_end <= seg_start:
             continue
         ossid = seg.get("ossid") or seg.get("oss_id") or ""
