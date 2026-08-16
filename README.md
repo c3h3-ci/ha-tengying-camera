@@ -7,7 +7,7 @@
 
 | 功能 | 说明 |
 |---|---|
-| 📹 多设备实时直播 | 1080p HEVC 双流 RTSP（云中继） |
+| 📹 多设备实时直播 | 1080p HEVC 实时 RTSP（云中继） |
 | 🎥 PTZ 云台 | 8 方向 + 速度 + 自动停止 |
 | ☁️ 云端录像 | 列表查询 → 下载 → DES 解密 → 带声音 mp4 → `/local/` 直接播 |
 | 🚨 告警消息 + AI 识别 | 移动/人形/车辆/宠物/声音事件，最新告警 sensor |
@@ -27,7 +27,7 @@
 HA 集成 ──HTTPS 云 API──▶ 腾影云 (登录/告警/录像/共享/OSS)
 ```
 
-- **bridge 镜像**（含 bionic chroot + 厂商 P2P 库）：`ghcr.io/c3h3-ai/tengying-bridge:0.5.0`
+- **bridge Add-on**（本地自包含构建，版本 `0.7.1`；含 bionic linker + 厂商 P2P 库，**不依赖任何外部 ghcr 镜像**）：源码在仓库 `tengying_bridge/`，由 Supervisor 从本地源码构建。
 - **HA 集成**：`custom_components/tengying_camera/`（14 个服务 + 5 类实体）
 
 ## 安装
@@ -54,9 +54,8 @@ HA 集成 ──HTTPS 云 API──▶ 腾影云 (登录/告警/录像/共享/OS
 4. **启动**：开启「自动启动」「自动更新」→ 启动。日志见「日志」页，应出现
    `[main] all device pipelines started`。
 
-> 镜像 `ghcr.io/c3h3-ai/tengying-bridge:0.5.0` 需为 **public**（仓库默认私有，
-> 请到 GitHub Packages 页面手动将包可见性改为 Public，否则 Supervisor 拉取会 403）。
-> 容器需要 `特权模式` + `host 网络`（Add-on 已在 `config.yaml` 声明）。
+> Add-on 为**本地源码构建**，不拉取任何外部镜像，无需配置 ghcr 可见性。
+> 容器需要 `特权模式`（`apparmor: disable`）+ `host 网络`，已在 `config.yaml` 声明。
 
 ### 方式二：手动 docker run（高级 / 替代）
 
@@ -79,7 +78,7 @@ docker run -d --name tengying_bridge \
 ```
 
 > 设备 UUID 可在 App 设备详情或 `list_records` 服务返回中看到。
-> 容器需要 `--privileged`（chroot 挂载）+ `--network host`（RTSP/控制端口）。
+> 容器需要 `--privileged` + `--network host`（RTSP/控制端口）。
 
 ### 安装 HA 集成（HACS 或手动）
 
@@ -124,6 +123,7 @@ data: {device_id: YT3586ZENZ3B, duration: 10}
 - **摄像头看不到**：确认 `options.json` 的账号/设备 UUID 正确，容器日志 `/tmp/bridge_*.log` 无 `creds FAILED`。
 - **PTZ/设置无效**：确认设备在 `devices` 数组中的顺序与集成配置一致（决定控制端口映射）。
 - **视频流卡顿**：云中继带宽取决于家庭上行，1080p HEVC 约需 2-4 Mbps。
+- **RTSP 在线但无画面**：bridge 在 stdout 视频流开头会多吐一个 11 字节的 `type 0` 垃圾 NAL（`00 00 01 00 00 8e 37 02 00 aa 21 df 07 00 00`，HEVC 规范里 type 0 为 reserved/非法）。旧版 `ffmpeg -f hevc` 解封装器因此抽不出 VPS/SPS/PPS extradata，丢弃全部帧（bridge/ffmpeg 日志见 `Failed to parse header of NALU (type 0)` / `missing picture in access unit`）。**v7 起** run.sh 已在 `bridge → ffmpeg` 之间插入 `filter_hevc.py` 流式剔除该垃圾 NAL，RTSP 正常出图（1920×1080@25fps）。若仍无画面，确认 addon 已更新到含 `filter_hevc.py` 的版本并重启加载项。
 
 ## 免责声明
 
