@@ -123,7 +123,9 @@ data: {device_id: YT3586ZENZ3B, duration: 10}
 - **摄像头看不到**：确认 `options.json` 的账号/设备 UUID 正确，容器日志 `/tmp/bridge_*.log` 无 `creds FAILED`。
 - **PTZ/设置无效**：确认设备在 `devices` 数组中的顺序与集成配置一致（决定控制端口映射）。
 - **视频流卡顿**：云中继带宽取决于家庭上行，1080p HEVC 约需 2-4 Mbps。
-- **RTSP 在线但无画面**：bridge 在 stdout 视频流开头会多吐一个 11 字节的 `type 0` 垃圾 NAL（`00 00 01 00 00 8e 37 02 00 aa 21 df 07 00 00`，HEVC 规范里 type 0 为 reserved/非法）。旧版 `ffmpeg -f hevc` 解封装器因此抽不出 VPS/SPS/PPS extradata，丢弃全部帧（bridge/ffmpeg 日志见 `Failed to parse header of NALU (type 0)` / `missing picture in access unit`）。**v7 起** run.sh 已在 `bridge → ffmpeg` 之间插入 `filter_hevc.py` 流式剔除该垃圾 NAL，RTSP 正常出图（1920×1080@25fps）。若仍无画面，确认 addon 已更新到含 `filter_hevc.py` 的版本并重启加载项。
+- **RTSP 在线但无画面**：分两种情况——
+  1. **垃圾 NAL（已修复）**：bridge 在 stdout 视频流开头会多吐一个 11 字节的 `type 0` 垃圾 NAL（`00 00 01 00 00 8e 37 02 00 aa 21 df 07 00 00`，HEVC 规范里 type 0 为 reserved/非法）。旧版 `ffmpeg -f hevc` 解封装器因此抽不出 VPS/SPS/PPS extradata，丢弃全部帧（日志见 `Failed to parse header of NALU (type 0)` / `missing picture in access unit`）。**v7 起** run.sh 已在 `bridge → ffmpeg` 之间插入 `filter_hevc.py` 流式剔除该垃圾 NAL，推送时 RTSP 正常出图（1920×1080@13fps，ffprobe 已验证）。
+  2. **相机间歇推流（行为限制，非 bug）**：相机走云中继，**仅在推送会话期间出流**，单次推送后常停 90s+。间隙期 bridge 日志 `no video data for 90s, reconnecting`、mediamtx 无 publisher，RTSP `DESCRIBE` 返回 `404 Not Found` → 画面必然黑屏。即实时画面只在相机推送窗口内可见，黑屏多半是「当前没在推」，稍等或触发相机活动（移动/App 观看）即可恢复。彻底常驻推流需逆向 bridge 找「保持推流/周期 keyframe」IOCTRL（待办，体验优化项）。
 
 ## 免责声明
 
