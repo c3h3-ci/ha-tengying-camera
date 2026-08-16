@@ -1,5 +1,5 @@
 #!/bin/bash
-# tengying_bridge addon 启动脚本 v6（不 chroot，直接 bionic linker 运行）
+# tengying_bridge addon 启动脚本 v7（不 chroot，直接 bionic linker 运行 + HEVC NAL 过滤）
 #
 # 关键修复 (v6): HA Supervisor addon 容器禁止 mount syscall
 #   (mount ... failed: Permission denied，即使 privileged:[SYS_ADMIN] + Seccomp:0 仍被容器运行时策略拦截)。
@@ -8,11 +8,18 @@
 # 修复: 不 chroot，直接用 bionic linker64 + LD_LIBRARY_PATH 跑 bridge；
 #       bridge 使用宿主(Alpine)容器真实的 /proc /dev，加载正常、能建立 PPCS 会话。
 #
+# 关键修复 (v7): bridge 在 stdout 视频流开头会多吐一个 11 字节的 "type 0" 垃圾 NAL
+#   (bytes: 00 00 01 00 00 8e 37 02 00 aa 21 df 07 00 00，HEVC 规范里 type 0 是 reserved/invalid)。
+#   ffmpeg 的 -f hevc 解封装器遇到这个开头会抽不出 VPS/SPS/PPS extradata，进而丢弃全部帧
+#   ("Failed to parse header of NALU (type 0)" / "missing picture in access unit")，RTSP 虽 online 却无画面。
+#   修复: 在 bridge 与 ffmpeg 之间插入 filter_hevc.py，流式剔除 type-0 NAL，ffmpeg 直接看到干净的
+#   Annex-B 流（首帧即 VPS），正常解析 1920x1080@25fps 并推 RTSP。该垃圾 NAL 仅在每次连接开头出现一次。
+#
 # bridge 仅接受 4 个参数: <p2pid> <pwd> <initstring> [mode]
 #   (旧版传的第 5/6/7 个端口参数被 bridge 完全忽略；bridge 内部自行监听 ctrl/audio/mini 固定端口)
 #   mode=0 云中继 / mode=1 LAN 直连（与设备同网段时可用）
 #
-# 主镜头视频(ch=2)由 bridge 输出到 stdout，管道给 ffmpeg 推 RTSP。
+# 主镜头视频(ch=2)由 bridge 输出到 stdout，经 filter_hevc.py 剔除垃圾 NAL 后，管道给 ffmpeg 推 RTSP。
 CONFIG_PATH=/data/options.json
 
 USERNAME=$(python3 -c "import json;print(json.load(open('$CONFIG_PATH'))['username'])" 2>/dev/null || echo "")
@@ -67,6 +74,7 @@ spawn_device() {
     while true; do
         echo "[dev:$DEV] starting pipeline -> rtsp://127.0.0.1:$RTSP_PORT/tengying_$DEV"
         "$LINKER" "$BRIDGE" "$P2PID" "$PWD" "$INIT" 0 2>>"/tmp/bridge_$DEV.log" \
+            | python3 /opt/bridge/filter_hevc.py 2>>"/tmp/filter_$DEV.log" \
             | ffmpeg -hide_banner -loglevel warning -fflags +genpts -f hevc -i pipe:0 -c copy \
               -f rtsp -rtsp_transport tcp "rtsp://127.0.0.1:$RTSP_PORT/tengying_$DEV" 2>>"/tmp/ffmpeg_$DEV.log"
         echo "[dev:$DEV] pipeline ended, restarting in 5s"
