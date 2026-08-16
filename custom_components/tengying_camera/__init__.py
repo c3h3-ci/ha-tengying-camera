@@ -773,8 +773,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     rtsp_host = entry.data.get("rtsp_host") or entry.options.get("rtsp_host", "")
     devices_order = entry.data.get("devices") or entry.options.get("devices")
     coordinator = TengyingDataUpdateCoordinator(
-        hass, api, rtsp_host=rtsp_host, devices_order=devices_order
+        hass, api, entry_id=entry.entry_id,
+        rtsp_host=rtsp_host, devices_order=devices_order
     )
+    await coordinator.async_load_settings()
     await coordinator.async_config_entry_first_refresh()
     _LOGGER.warning("tengying DEBUG: coordinator refresh ok")
 

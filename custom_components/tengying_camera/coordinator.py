@@ -6,6 +6,7 @@ from datetime import timedelta
 import logging
 
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import YingTengApi, YingTengAuthError
@@ -21,11 +22,20 @@ class TengyingDataUpdateCoordinator(DataUpdateCoordinator[dict]):
         self,
         hass: HomeAssistant,
         api: YingTengApi,
+        entry_id: str = "",
         rtsp_host: str = "",
         devices_order: list[str] | None = None,
     ) -> None:
         """Initialize."""
         self.api = api
+        self.entry_id = entry_id
+        # 持久化设备设置（开关乐观态），重启保留
+        self._store = (
+            Store(hass, 1, f"tengying_camera.{entry_id}.settings")
+            if entry_id
+            else None
+        )
+        self.settings: dict[str, bool] = {}
         # Host:port of the tutk-bridge addon (e.g. "192.168.1.100:8554" or
         # "127.0.0.1:8554" when the addon runs on the same box as HA).
         self.rtsp_host = rtsp_host
@@ -38,6 +48,26 @@ class TengyingDataUpdateCoordinator(DataUpdateCoordinator[dict]):
             name=DOMAIN,
             update_interval=timedelta(seconds=DEFAULT_SCAN_INTERVAL),
         )
+
+    async def async_load_settings(self) -> None:
+        """Load persistent device settings (switch state) from .storage."""
+        if self._store is None:
+            return
+        try:
+            data = await self._store.async_load()
+            self.settings = data or {}
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.warning("tengying load settings failed: %s", err)
+            self.settings = {}
+
+    async def async_save_settings(self) -> None:
+        """Persist device settings to .storage."""
+        if self._store is None:
+            return
+        try:
+            await self._store.async_save(self.settings)
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.warning("tengying save settings failed: %s", err)
 
     def ctrl_port_for(self, device_id: str) -> int:
         """返回设备对应的 bridge PTZ 控制端口（8561 + 顺序索引）。"""
