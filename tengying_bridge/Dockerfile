@@ -16,9 +16,10 @@ COPY bridge_bionic /opt/bionic/data/bridge_bionic
 COPY mediamtx /opt/mediamtx/mediamtx
 COPY mediamtx.yml /opt/mediamtx/mediamtx.yml
 
-# 凭据刷新脚本 + HEVC NAL 过滤器(剔除 bridge 输出开头的 type-0 垃圾 NAL) + 启动脚本
+# 凭据刷新脚本 + HEVC NAL 过滤器(剔除 bridge 输出开头的 type-0 垃圾 NAL) + 末帧保持代理 + 启动脚本
 COPY fetch_creds.py /opt/bridge/fetch_creds.py
 COPY filter_hevc.py /opt/bridge/filter_hevc.py
+COPY repeater.py /opt/bridge/repeater.py
 COPY run.sh /run.sh
 
 RUN chmod +x /opt/mediamtx/mediamtx /opt/bionic/data/bridge_bionic \

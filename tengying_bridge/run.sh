@@ -1,5 +1,12 @@
 #!/bin/bash
-# tengying_bridge addon 启动脚本 v7（不 chroot，直接 bionic linker 运行 + HEVC NAL 过滤）
+# tengying_bridge addon 启动脚本 v8（不 chroot + HEVC NAL 过滤 + 末帧保持代理）
+#
+# 关键修复 (v8): 影腾相机经云中继间歇推流 —— 推流窗口(~150s)到期相机停推, bridge 等 90s 无数据后
+#   才 reconnect。停推期间 ffmpeg 收不到数据 -> mediamtx 的 RTSP publisher 掉线 -> HA 黑屏。
+#   修复: 在 filter_hevc.py 与 ffmpeg 之间插入 repeater.py（HEVC Annex-B 末帧保持代理）:
+#   实时透传 NAL, 缓冲最近一个 GOP; stdin 超过 REPEATER_STALL_SEC(默认4s) 无数据时循环重放该 GOP,
+#   使 RTSP publisher 始终在线, HA 显示"冻结的最后一帧"而非黑屏。相机恢复推流后自动切回实时。
+#   零侵入: 不改 bridge 二进制。
 #
 # 关键修复 (v6): HA Supervisor addon 容器禁止 mount syscall
 #   (mount ... failed: Permission denied，即使 privileged:[SYS_ADMIN] + Seccomp:0 仍被容器运行时策略拦截)。
@@ -75,6 +82,7 @@ spawn_device() {
         echo "[dev:$DEV] starting pipeline -> rtsp://127.0.0.1:$RTSP_PORT/tengying_$DEV"
         "$LINKER" "$BRIDGE" "$P2PID" "$PWD" "$INIT" 0 2>>"/tmp/bridge_$DEV.log" \
             | python3 /opt/bridge/filter_hevc.py 2>>"/tmp/filter_$DEV.log" \
+            | python3 /opt/bridge/repeater.py 2>>"/tmp/repeater_$DEV.log" \
             | ffmpeg -hide_banner -loglevel warning -fflags +genpts -f hevc -i pipe:0 -c copy \
               -f rtsp -rtsp_transport tcp "rtsp://127.0.0.1:$RTSP_PORT/tengying_$DEV" 2>>"/tmp/ffmpeg_$DEV.log"
         echo "[dev:$DEV] pipeline ended, restarting in 5s"

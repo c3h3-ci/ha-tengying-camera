@@ -125,7 +125,7 @@ data: {device_id: YT3586ZENZ3B, duration: 10}
 - **视频流卡顿**：云中继带宽取决于家庭上行，1080p HEVC 约需 2-4 Mbps。
 - **RTSP 在线但无画面**：分两种情况——
   1. **垃圾 NAL（已修复）**：bridge 在 stdout 视频流开头会多吐一个 11 字节的 `type 0` 垃圾 NAL（`00 00 01 00 00 8e 37 02 00 aa 21 df 07 00 00`，HEVC 规范里 type 0 为 reserved/非法）。旧版 `ffmpeg -f hevc` 解封装器因此抽不出 VPS/SPS/PPS extradata，丢弃全部帧（日志见 `Failed to parse header of NALU (type 0)` / `missing picture in access unit`）。**v7 起** run.sh 已在 `bridge → ffmpeg` 之间插入 `filter_hevc.py` 流式剔除该垃圾 NAL，推送时 RTSP 正常出图（1920×1080@13fps，ffprobe 已验证）。
-  2. **相机间歇推流（行为限制，非 bug）**：相机走云中继，**仅在推送会话期间出流**，单次推送后常停 90s+。间隙期 bridge 日志 `no video data for 90s, reconnecting`、mediamtx 无 publisher，RTSP `DESCRIBE` 返回 `404 Not Found` → 画面必然黑屏。即实时画面只在相机推送窗口内可见，黑屏多半是「当前没在推」，稍等或触发相机活动（移动/App 观看）即可恢复。彻底常驻推流需逆向 bridge 找「保持推流/周期 keyframe」IOCTRL（待办，体验优化项）。
+  2. **相机间歇推流（行为限制，已缓解）**：相机走云中继，**仅在推送会话期间出流**，单次推送后常停 90s+。间隙期 bridge 日志 `no video data for 90s, reconnecting`、mediamtx 无 publisher。早期版本间隙期 RTSP 返回 `404` → 黑屏。**v8 起** run.sh 在 `filter_hevc.py → ffmpeg` 之间再插入 `repeater.py`（HEVC 末帧保持代理）：实时透传 NAL 并缓冲最近一个 GOP，stdin 超过 `REPEATER_STALL_SEC`(默认 4s) 无数据时循环重放该 GOP，使 RTSP publisher 始终在线 —— **间隙期 HA 显示「冻结的最后一帧」而非黑屏**，相机恢复推流后自动切回实时。彻底常驻/零间隙推流需逆向 bridge 找「保持推流/周期 keyframe」IOCTRL（待办，体验优化项）。
 
 ## 免责声明
 
